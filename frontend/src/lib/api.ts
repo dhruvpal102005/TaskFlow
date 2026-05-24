@@ -1,7 +1,7 @@
 import { createClient } from "./supabase";
 import type { Task, CreateTaskPayload, UpdateTaskPayload, Profile } from "@/types";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "production" ? "" : "http://localhost:5000");
 
 async function getToken(): Promise<string | null> {
   const sb = createClient();
