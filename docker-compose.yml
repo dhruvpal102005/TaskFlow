@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - SUPABASE_URL=https://ubvpxwvilpwbgtyhtzth.supabase.co
+      - SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVidnB4d3ZpbHB3Ymd0eWh0enRoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTYxNTAxMSwiZXhwIjoyMDk1MTkxMDExfQ.8l2pQaGryvUFMg4YENZTKHpb4Y83r-dqWJqni7STb2Q
+      - GMAIL_USER=dhruvpal102005@gmail.com
+      - GMAIL_APP_PASSWORD=nbyoyfukdymeattg
+      - FRONTEND_URL=http://localhost:3000
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=https://ubvpxwvilpwbgtyhtzth.supabase.co
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVidnB4d3ZpbHB3Ymd0eWh0enRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2MTUwMTEsImV4cCI6MjA5NTE5MTAxMX0.bEbRK47SXliupiP--1FvGKwbES9K0Z4zVT6G4JFnWF4
+        - NEXT_PUBLIC_API_URL=http://localhost:5000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
