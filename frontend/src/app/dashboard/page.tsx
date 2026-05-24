@@ -7,30 +7,23 @@ import { api } from "@/lib/api";
 import type { Task, Profile } from "@/types";
 import TaskCard from "@/components/TaskCard";
 import CreateTaskModal from "@/components/CreateTaskModal";
-import { LogOut, Plus, CheckSquare, Clock, CheckCircle2, LayoutGrid, User } from "lucide-react";
 import Image from "next/image";
 
 type FilterStatus = "all" | "todo" | "in_progress" | "done";
 
 export default function DashboardPage() {
-  const router  = useRouter();
-  const [user,    setUser]    = useState<Profile | null>(null);
-  const [tasks,   setTasks]   = useState<Task[]>([]);
-  const [users,   setUsers]   = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter,  setFilter]  = useState<FilterStatus>("all");
+  const router = useRouter();
+  const [user,       setUser]       = useState<Profile | null>(null);
+  const [tasks,      setTasks]      = useState<Task[]>([]);
+  const [users,      setUsers]      = useState<Profile[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [filter,     setFilter]     = useState<FilterStatus>("all");
   const [showCreate, setShowCreate] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [me, allTasks, allUsers] = await Promise.all([
-        api.getMe(),
-        api.getTasks(),
-        api.getUsers(),
-      ]);
-      setUser(me);
-      setTasks(allTasks);
-      setUsers(allUsers);
+      const [me, allTasks, allUsers] = await Promise.all([api.getMe(), api.getTasks(), api.getUsers()]);
+      setUser(me); setTasks(allTasks); setUsers(allUsers);
     } catch (err) {
       console.error(err);
       router.replace("/");
@@ -48,8 +41,7 @@ export default function DashboardPage() {
   }, [router, load]);
 
   async function handleSignOut() {
-    const sb = createClient();
-    await sb.auth.signOut();
+    await createClient().auth.signOut();
     router.replace("/");
   }
 
@@ -64,7 +56,6 @@ export default function DashboardPage() {
   }
 
   const filtered = tasks.filter(t => filter === "all" || t.status === filter);
-
   const counts = {
     all:         tasks.length,
     todo:        tasks.filter(t => t.status === "todo").length,
@@ -74,123 +65,237 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-          <p className="text-sm text-zinc-500">Loading your workspace…</p>
-        </div>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, background: "var(--bg)" }}>
+        <div style={{ width: 22, height: 22, border: "2px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Loading…</p>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-[#1f1f1f] bg-[#0a0a0a]/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                <path d="M4 10l4 4 8-8" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span className="font-semibold text-sm tracking-tight">TaskFlow</span>
-          </div>
+  const tabs: { key: FilterStatus; label: string }[] = [
+    { key: "all",         label: "All" },
+    { key: "todo",        label: "To Do" },
+    { key: "in_progress", label: "In Progress" },
+    { key: "done",        label: "Done" },
+  ];
 
-          <div className="flex items-center gap-3">
-            {user?.avatar_url ? (
-              <Image src={user.avatar_url} alt={user.full_name ?? "User"} width={28} height={28} className="rounded-full ring-1 ring-white/10" />
+  return (
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--bg)" }}>
+
+      {/* ── Sidebar ─────────────────────────────────────── */}
+      <aside style={{
+        width: 220, minWidth: 220,
+        background: "var(--surface)",
+        borderRight: "1px solid var(--border)",
+        display: "flex", flexDirection: "column",
+        padding: "20px 12px",
+        zIndex: 20,
+        overflow: "hidden",
+      }}>
+        {/* Brand */}
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "4px 8px", marginBottom: 28 }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: 7,
+            background: "var(--brand)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12l5 5L20 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span className="font-headline" style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+            TaskFlow
+          </span>
+        </div>
+
+        {/* Nav */}
+        <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          {[
+            { icon: "dashboard", label: "Dashboard", active: true },
+            { icon: "assignment", label: "My Tasks" },
+            { icon: "group", label: "Team" },
+            { icon: "settings", label: "Settings" },
+          ].map(item => (
+            <a
+              key={item.label}
+              href="#"
+              className={`nav-item${item.active ? " active" : ""}`}
+              onClick={e => e.preventDefault()}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 19, ...(item.active ? { fontVariationSettings: "'FILL' 1" } : {}) }}
+              >
+                {item.icon}
+              </span>
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        {/* User */}
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+          <div
+            className="nav-item"
+            onClick={handleSignOut}
+            title="Sign out"
+            style={{ justifyContent: "space-between", cursor: "pointer" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              {user?.avatar_url ? (
+                <Image src={user.avatar_url} alt="" width={28} height={28} style={{ borderRadius: "50%", border: "1px solid var(--border)", flexShrink: 0 }} />
+              ) : (
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--brand-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "1px solid var(--border)" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 15, color: "var(--brand)" }}>person</span>
+                </div>
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 110 }}>
+                  {user?.full_name ?? "User"}
+                </div>
+                <div style={{ fontSize: "0.65rem", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 110 }}>
+                  {user?.email}
+                </div>
+              </div>
+            </div>
+            <span className="material-symbols-outlined" style={{ fontSize: 17, color: "var(--text-muted)", flexShrink: 0 }}>logout</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Main ────────────────────────────────────────── */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+        {/* Header */}
+        <header style={{
+          height: 64,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 32px",
+          background: "var(--surface)",
+          borderBottom: "1px solid var(--border)",
+          flexShrink: 0,
+        }}>
+          <h1 className="font-headline" style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-primary)" }}>
+            Dashboard
+          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: 6, borderRadius: 6, display: "flex", alignItems: "center", transition: "color 0.12s" }}
+              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"}
+              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 21 }}>notifications</span>
+            </button>
+            <button
+              id="btn-new-task"
+              onClick={() => setShowCreate(true)}
+              className="btn-primary"
+              style={{ padding: "8px 14px" }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 17 }}>add</span>
+              New Task
+            </button>
+          </div>
+        </header>
+
+        {/* Scrollable body */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 32px" }}>
+
+            {/* Greeting */}
+            <div style={{ marginBottom: 32 }}>
+              <h2 className="font-headline" style={{ fontSize: "1.9rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.02em", marginBottom: 4 }}>
+                Good {greeting()}, {user?.full_name?.split(" ")[0] ?? "there"}
+              </h2>
+              <p style={{ fontSize: "0.95rem", color: "var(--text-secondary)" }}>
+                {counts.all} task{counts.all !== 1 ? "s" : ""} across all your work
+              </p>
+            </div>
+
+            {/* Stats row — divider style, no cards */}
+            <div style={{
+              display: "flex",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              overflow: "hidden",
+              marginBottom: 32,
+            }}>
+              {[
+                { label: "All Tasks",    value: counts.all         },
+                { label: "To Do",        value: counts.todo        },
+                { label: "In Progress",  value: counts.in_progress },
+                { label: "Completed",    value: counts.done        },
+              ].map((s, i) => (
+                <div
+                  key={s.label}
+                  style={{
+                    flex: 1,
+                    padding: "16px 20px",
+                    borderLeft: i > 0 ? "1px solid var(--border)" : "none",
+                  }}
+                >
+                  <p style={{ fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-secondary)", marginBottom: 4 }}>
+                    {s.label}
+                  </p>
+                  <p className="font-headline" style={{ fontSize: "1.6rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    {s.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Filter tabs — underline style */}
+            <div style={{ borderBottom: "1px solid var(--border)", display: "flex", gap: 28, marginBottom: 24, marginTop: -4 }}>
+              {tabs.map(t => (
+                <button
+                  key={t.key}
+                  className={`filter-tab${filter === t.key ? " active" : ""}`}
+                  onClick={() => setFilter(t.key)}
+                >
+                  {t.label}
+                  <span style={{ marginLeft: 5, fontSize: "0.7rem", opacity: 0.6 }}>{counts[t.key]}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Task grid */}
+            {filtered.length === 0 ? (
+              <div style={{ paddingTop: 60, paddingBottom: 60, textAlign: "center" }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 10,
+                  background: "var(--brand-light)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 14px",
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 24, color: "var(--brand)" }}>task_alt</span>
+                </div>
+                <p style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>No tasks here</p>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Click &ldquo;New Task&rdquo; to add one</p>
+              </div>
             ) : (
-              <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                <User size={14} className="text-indigo-400" />
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+                gap: 16,
+              }}>
+                {filtered.map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    currentUserId={user?.id ?? ""}
+                    onStatusChange={handleStatusChange}
+                    onDelete={handleDelete}
+                    onUpdate={updated => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
+                    users={users}
+                  />
+                ))}
               </div>
             )}
-            <span className="text-sm text-zinc-400 hidden sm:inline">{user?.full_name ?? user?.email}</span>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1.5 rounded-lg hover:bg-white/5"
-            >
-              <LogOut size={13} /> Sign out
-            </button>
           </div>
         </div>
-      </header>
-
-      {/* Main */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
-        {/* Page title + new task */}
-        <div className="flex items-start justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Good {getGreeting()}, {user?.full_name?.split(" ")[0] ?? "there"} 👋
-            </h1>
-            <p className="text-sm text-zinc-500 mt-1">
-              {counts.todo} open · {counts.in_progress} in progress · {counts.done} done
-            </p>
-          </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-lg shadow-indigo-500/20 whitespace-nowrap"
-          >
-            <Plus size={16} /> New task
-          </button>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-          {statCards(counts).map(s => (
-            <div key={s.label} className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <s.Icon size={14} className={s.color} />
-                <span className="text-xs text-zinc-500">{s.label}</span>
-              </div>
-              <p className="text-2xl font-bold">{s.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Filter tabs */}
-        <div className="flex gap-1 bg-[#111] border border-[#1f1f1f] rounded-xl p-1 mb-6 w-fit">
-          {(["all", "todo", "in_progress", "done"] as FilterStatus[]).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                filter === f
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              {f === "all" ? "All" : f === "in_progress" ? "In Progress" : capitalize(f)}
-              <span className="ml-1.5 text-xs opacity-60">{counts[f]}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Task list */}
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-4">
-              <CheckSquare size={24} className="text-indigo-400" />
-            </div>
-            <p className="text-zinc-400 font-medium">No tasks here yet</p>
-            <p className="text-zinc-600 text-sm mt-1">Create a new task to get started</p>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                currentUserId={user?.id ?? ""}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-                onUpdate={(updated) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
-                users={users}
-              />
-            ))}
-          </div>
-        )}
       </main>
 
       {showCreate && (
@@ -198,27 +303,14 @@ export default function DashboardPage() {
           users={users}
           currentUserId={user?.id ?? ""}
           onClose={() => setShowCreate(false)}
-          onCreate={(task) => { setTasks(prev => [task, ...prev]); setShowCreate(false); }}
+          onCreate={task => { setTasks(prev => [task, ...prev]); setShowCreate(false); }}
         />
       )}
     </div>
   );
 }
 
-function getGreeting() {
+function greeting() {
   const h = new Date().getHours();
-  if (h < 12) return "morning";
-  if (h < 17) return "afternoon";
-  return "evening";
-}
-
-function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
-
-function statCards(counts: Record<string, number>) {
-  return [
-    { label: "Total",       value: counts.all,         Icon: LayoutGrid,   color: "text-zinc-400" },
-    { label: "To Do",       value: counts.todo,        Icon: Clock,        color: "text-amber-400" },
-    { label: "In Progress", value: counts.in_progress, Icon: CheckSquare,  color: "text-blue-400"  },
-    { label: "Completed",   value: counts.done,        Icon: CheckCircle2, color: "text-green-400" },
-  ];
+  return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
 }

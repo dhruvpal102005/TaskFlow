@@ -3,145 +3,270 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import type { Task, Profile, TaskPriority } from "@/types";
-import { X, Loader2 } from "lucide-react";
 import Image from "next/image";
 
 interface Props {
-  users:         Profile[];
+  users: Profile[];
   currentUserId: string;
-  onClose:       () => void;
-  onCreate:      (task: Task) => void;
+  onClose: () => void;
+  onCreate: (task: Task) => void;
 }
+
+const PRIORITIES: { value: TaskPriority; label: string; color: string; bg: string; border: string }[] = [
+  { value: "low",    label: "Low",    color: "#166534", bg: "#f0fdf4", border: "#bbf7d0" },
+  { value: "medium", label: "Medium", color: "#92400e", bg: "#fffbeb", border: "#fde68a" },
+  { value: "high",   label: "High",   color: "#991b1b", bg: "#fef2f2", border: "#fecaca" },
+];
 
 export default function CreateTaskModal({ users, currentUserId, onClose, onCreate }: Props) {
   const [title,      setTitle]      = useState("");
   const [desc,       setDesc]       = useState("");
   const [priority,   setPriority]   = useState<TaskPriority>("medium");
-  const [assignedTo, setAssignedTo] = useState<string>("");
+  const [assignedTo, setAssignedTo] = useState("");
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState("");
 
   async function handleSubmit() {
     if (!title.trim()) { setError("Title is required"); return; }
-    setSaving(true);
-    setError("");
+    setSaving(true); setError("");
     try {
       const task = await api.createTask({
-        title:       title.trim(),
-        description: desc.trim(),
-        priority,
-        assigned_to: assignedTo || null,
+        title: title.trim(), description: desc.trim(),
+        priority, assigned_to: assignedTo || null,
       });
       onCreate(task);
-    } catch (e: any) {
-      setError(e.message ?? "Something went wrong");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
       setSaving(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md bg-[#111] border border-[#1f1f1f] rounded-2xl shadow-2xl animate-slide-up">
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 50,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 16,
+    }}>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)" }}
+      />
+
+      {/* Modal */}
+      <div
+        className="animate-slide-up"
+        style={{
+          position: "relative", zIndex: 10,
+          width: "100%", maxWidth: 460,
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          overflow: "hidden",
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#1a1a1a]">
-          <h2 className="font-semibold text-base">Create task</h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 transition-colors">
-            <X size={18} />
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "18px 20px",
+          borderBottom: "1px solid var(--border)",
+        }}>
+          <h2 className="font-headline" style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            Create task
+          </h2>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", padding: 4, borderRadius: 5, transition: "color 0.12s" }}
+            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"}
+            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 19 }}>close</span>
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 flex flex-col gap-4">
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
           {error && (
-            <div className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+            <div style={{
+              background: "#fef2f2", border: "1px solid #fecaca",
+              borderRadius: 6, padding: "8px 12px",
+              fontSize: "0.8rem", color: "#991b1b",
+              display: "flex", alignItems: "center", gap: 6,
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 15 }}>error</span>
               {error}
             </div>
           )}
 
           {/* Title */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Title *</label>
+            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 500, color: "var(--text-primary)", marginBottom: 5 }}>
+              Title <span style={{ color: "var(--high)" }}>*</span>
+            </label>
             <input
+              id="input-task-title"
+              className="input"
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="What needs to be done?"
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
               autoFocus
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Description</label>
+            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 500, color: "var(--text-primary)", marginBottom: 5 }}>
+              Description
+            </label>
             <textarea
+              className="input"
               value={desc}
               onChange={e => setDesc(e.target.value)}
-              placeholder="Add details…"
+              placeholder="Add details or context…"
               rows={3}
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+              style={{ resize: "none" }}
             />
           </div>
 
           {/* Priority */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Priority</label>
-            <div className="flex gap-2">
-              {(["low", "medium", "high"] as TaskPriority[]).map(p => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPriority(p)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider border transition-all ${
-                    priority === p
-                      ? p === "low"    ? "bg-green-400/15 border-green-400/40 text-green-400"
-                      : p === "medium" ? "bg-amber-400/15 border-amber-400/40 text-amber-400"
-                      :                  "bg-red-400/15   border-red-400/40   text-red-400"
-                      : "border-[#2a2a2a] text-zinc-600 hover:border-[#3a3a3a]"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
+            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 500, color: "var(--text-primary)", marginBottom: 8 }}>
+              Priority
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {PRIORITIES.map(p => {
+                const active = priority === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setPriority(p.value)}
+                    style={{
+                      flex: 1, padding: "8px 0",
+                      borderRadius: 7, fontSize: "0.78rem", fontWeight: 600,
+                      textTransform: "uppercase", letterSpacing: "0.04em",
+                      border: "1px solid",
+                      cursor: "pointer", transition: "all 0.12s",
+                      background: active ? p.bg : "transparent",
+                      borderColor: active ? p.border : "var(--border)",
+                      color: active ? p.color : "var(--text-secondary)",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Assign to */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Assign to</label>
-            <select
-              value={assignedTo}
-              onChange={e => setAssignedTo(e.target.value)}
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm text-zinc-300 focus:outline-none focus:border-indigo-500 transition-colors appearance-none cursor-pointer"
-            >
-              <option value="">Unassigned</option>
+            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 500, color: "var(--text-primary)", marginBottom: 8 }}>
+              Assign to
+            </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 160, overflowY: "auto" }}>
+              <UserRow
+                label="Unassigned"
+                selected={assignedTo === ""}
+                onClick={() => setAssignedTo("")}
+              />
               {users.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name ?? u.email}{u.id === currentUserId ? " (you)" : ""}
-                </option>
+                <UserRow
+                  key={u.id}
+                  label={u.full_name ?? u.email}
+                  sub={u.id === currentUserId ? "You" : u.email}
+                  avatarUrl={u.avatar_url ?? undefined}
+                  selected={assignedTo === u.id}
+                  onClick={() => setAssignedTo(u.id)}
+                />
               ))}
-            </select>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#2a2a2a] text-sm text-zinc-400 hover:border-[#3a3a3a] hover:text-zinc-300 transition-colors"
-          >
+        <div style={{
+          display: "flex", gap: 8, padding: "14px 20px",
+          borderTop: "1px solid var(--border)",
+        }}>
+          <button onClick={onClose} className="btn-secondary" style={{ flex: 1, padding: "9px 0" }}>
             Cancel
           </button>
           <button
+            id="btn-create-task"
             onClick={handleSubmit}
             disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            className="btn-primary"
+            style={{ flex: 2, padding: "9px 0", justifyContent: "center" }}
           >
-            {saving ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : "Create task"}
+            {saving ? (
+              <>
+                <span style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
+                Creating…
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add_task</span>
+                Create Task
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
+function UserRow({
+  label, sub, avatarUrl, selected, onClick,
+}: {
+  label: string | null; sub?: string; avatarUrl?: string; selected: boolean; onClick: () => void;
+}) {
+  const initials = (label ?? "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 9,
+        padding: "7px 10px", borderRadius: 7,
+        cursor: "pointer", transition: "background 0.1s",
+        background: selected ? "var(--brand-light)" : "transparent",
+        border: `1px solid ${selected ? "rgba(79,70,229,0.2)" : "transparent"}`,
+      }}
+      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = "var(--bg)"; }}
+      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+    >
+      {avatarUrl ? (
+        <Image src={avatarUrl} alt={label ?? ""} width={26} height={26} style={{ borderRadius: "50%", border: "1px solid var(--border)", flexShrink: 0 }} />
+      ) : (
+        <div style={{
+          width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+          background: selected ? "var(--brand)" : "var(--bg)",
+          color: selected ? "#fff" : "var(--text-secondary)",
+          border: "1px solid var(--border)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "0.62rem", fontWeight: 700,
+        }}>
+          {label === "Unassigned" ? (
+            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>person_off</span>
+          ) : initials}
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: "0.82rem", fontWeight: 500, color: selected ? "var(--brand)" : "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {label ?? "Unassigned"}
+        </div>
+        {sub && (
+          <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {sub}
+          </div>
+        )}
+      </div>
+      {selected && <span className="material-symbols-outlined" style={{ fontSize: 16, color: "var(--brand)", flexShrink: 0 }}>check</span>}
     </div>
   );
 }
